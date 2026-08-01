@@ -5,18 +5,16 @@ export type Acuity = z.infer<typeof AcuitySchema>;
 export const CitationSchema = z.object({ source: z.string().min(1), snippet: z.string().min(1) }).strict();
 export type Citation = z.infer<typeof CitationSchema>;
 
-export const RequiredFieldSchema = z.enum(['primary_symptom', 'severity', 'onset_duration', 'affected_areas', 'compared_to_baseline', 'red_flag_screen']);
-export type RequiredField = z.infer<typeof RequiredFieldSchema>;
 export const TranscriptTurnSchema = z.object({ role: z.enum(['patient', 'agent']), text: z.string().min(1) }).strict();
 export type TranscriptTurn = z.infer<typeof TranscriptTurnSchema>;
 export const IntakeStateSchema = z.object({
   patientId: z.string().min(1), turns: z.array(TranscriptTurnSchema),
-  collected: z.object({ primary_symptom: z.string(), severity: z.string(), onset_duration: z.string(), affected_areas: z.string(), compared_to_baseline: z.string(), red_flag_screen: z.string() }).partial().strict(), turnCount: z.number().int().nonnegative(), startedAt: z.string().datetime()
+  askedPatterns: z.array(z.string().min(1)), turnCount: z.number().int().nonnegative(), startedAt: z.string().datetime()
 }).strict();
 export type IntakeState = z.infer<typeof IntakeStateSchema>;
 export const IntakeDecisionSchema = z.discriminatedUnion('done', [
-  z.object({ done: z.literal(true), reason: z.enum(['checklist_complete', 'max_turns', 'max_time', 'red_flag_interrupt']) }).strict(),
-  z.object({ done: z.literal(false), nextQuestion: z.string().min(1), targetField: RequiredFieldSchema, reason: z.string().min(1) }).strict()
+  z.object({ done: z.literal(true), reason: z.enum(['no_further_questions', 'max_turns', 'max_time', 'red_flag_interrupt']) }).strict(),
+  z.object({ done: z.literal(false), nextQuestion: z.string().min(1), matchedPattern: z.string().min(1), reason: z.string().min(1) }).strict()
 ]);
 export type IntakeDecision = z.infer<typeof IntakeDecisionSchema>;
 
@@ -26,6 +24,11 @@ export const StructuredSymptomsSchema = z.object({ patientId: z.string().min(1),
 export type StructuredSymptoms = z.infer<typeof StructuredSymptomsSchema>;
 export const GroundingSchema = z.object({ citations: z.array(CitationSchema), candidateMappings: z.array(z.object({ pattern: z.string().min(1), acuity: AcuitySchema }).strict()) }).strict();
 export type Grounding = z.infer<typeof GroundingSchema>;
+
+export const RetrievedQuestionSchema = z.object({ pattern: z.string().min(1), acuity: AcuitySchema, followUpQuestion: z.string().min(1), snippet: z.string().min(1), source: z.string().min(1) }).strict();
+export type RetrievedQuestion = z.infer<typeof RetrievedQuestionSchema>;
+export const IntakeGuidanceSchema = z.object({ matches: z.array(RetrievedQuestionSchema) }).strict();
+export type IntakeGuidance = z.infer<typeof IntakeGuidanceSchema>;
 
 export const RedFlagResultSchema = z.object({ triggered: z.boolean(), matches: z.array(z.string().min(1)), forcedAcuity: z.enum(['urgent', 'emergency']).optional() }).strict();
 export type RedFlagResult = z.infer<typeof RedFlagResultSchema>;
