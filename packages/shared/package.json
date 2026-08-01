@@ -1,0 +1,11 @@
+{
+  "name": "@bridgecare/shared",
+  "version": "0.1.0",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts",
+    "./contracts": "./src/contracts.ts",
+    "./redflags": "./src/redflags.ts"
+  },
+  "dependencies": { "zod": "^3.24.2" }
+}
