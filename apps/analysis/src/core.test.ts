@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { analyzeRequest, bookAppointment, buildCoverageUnavailableSummary, buildGateDecision, createAnalyzerState, createSampleAnalyzeRequest, scoreTriage } from './core.js';
+import { analyzeRequest, bookAppointment, buildCoverageUnavailableSummary, buildGateDecision, createAnalyzerState, createSampleAnalyzeRequest, makeAnalysisCommunication, scoreTriage } from './core.js';
 import { detectRedFlags } from '../../../packages/shared/redflags.js';
 import { appointmentResultSchema, triageOutcomeSchema } from '../../../packages/shared/contracts.js';
 import { appointmentResourceSchema, observationResourceSchema, validateBundle } from './fhir.js';
@@ -114,6 +114,25 @@ test('booking requires a matching completed triage and returns specialty-matched
   const outcome = await analyzeRequest(request, state);
   assert.ok(outcome.appointmentOptions.length > 0);
   assert.equal(outcome.appointmentOptions.length, 2);
+});
+
+test('completed analysis can be persisted as a FHIR Communication with the full result', () => {
+  const request = createSampleAnalyzeRequest();
+  const triage = scoreTriage(request);
+  const communication = makeAnalysisCommunication({
+    patientId: request.patientId,
+    request,
+    triage,
+    insurance: buildCoverageUnavailableSummary(request.patientId),
+    providers: [],
+    appointmentOptions: [],
+  });
+
+  const stored = JSON.parse(communication.payload[0]!.contentString) as { transcript: unknown[]; triage: { acuity: string }; insurance: { active: boolean } };
+  assert.equal(communication.subject.reference, `Patient/${request.patientId}`);
+  assert.equal(stored.transcript.length, request.transcript.length);
+  assert.equal(stored.triage.acuity, triage.acuity);
+  assert.equal(stored.insurance.active, false);
 });
 
 test('detectRedFlags catches obvious emergencies', () => {
