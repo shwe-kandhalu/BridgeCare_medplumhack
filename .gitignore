@@ -7,3 +7,4 @@ apps/voice/public/swe-worker-*.js
 .env
 .env.local
 .env.*.local
+.vercel
