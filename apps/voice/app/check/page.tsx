@@ -1,16 +1,21 @@
 'use client';
 import { useRef, useState } from 'react';
-import { AnalyzeRequestSchema, AppointmentResultSchema, GroundingSchema, TriageOutcomeSchema, type AppointmentResult, type TriageOutcome } from '@bridgecare/shared';
+import { AnalyzeRequestSchema, GroundingSchema, TriageOutcomeSchema } from '@bridgecare/shared';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { createIntake, DISCLAIMER, extractStructuredSymptoms, processPatientTurn, type TurnResult } from '../../lib/intake';
+import NavTabs from '../nav-tabs';
 
 const PATIENT_ID = 'synthetic-maya-001';
 const EMPTY_GROUNDING = GroundingSchema.parse({ citations: [], candidateMappings: [] });
+const OUTCOME_KEY = 'attune:lastOutcome';
+const BOOKING_KEY = 'attune:lastBooking';
 
 export default function CheckIn() {
+  const router = useRouter();
   const [intake, setIntake] = useState(() => createIntake(PATIENT_ID));
   const [message, setMessage] = useState('');
-  const [outcome, setOutcome] = useState<TriageOutcome>();
-  const [booking, setBooking] = useState<AppointmentResult>();
+  const [done, setDone] = useState(false);
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
   const [recording, setRecording] = useState(false);
@@ -27,7 +32,11 @@ export default function CheckIn() {
     try {
       const response = await fetch('/api/analyze', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
       if (!response.ok) throw new Error(`Analyze service returned ${response.status}.`);
-      setOutcome(TriageOutcomeSchema.parse(await response.json()));
+      const parsed = TriageOutcomeSchema.parse(await response.json());
+      localStorage.setItem(OUTCOME_KEY, JSON.stringify(parsed));
+      localStorage.removeItem(BOOKING_KEY);
+      setDone(true);
+      router.push('/results');
     } catch (caught) {
       console.error('Analyze seam unavailable:', caught);
       setError('We could not reach the triage service. Please contact your provider for guidance. If this may be an emergency, call 911 or go to the nearest ER.');
@@ -51,7 +60,7 @@ export default function CheckIn() {
   async function speak(text: string): Promise<void> { try { const response = await fetch('/api/voice/speak', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text }) }); if (!response.ok) return; const url = URL.createObjectURL(await response.blob()); const audio = new Audio(url); audio.onended = () => URL.revokeObjectURL(url); await audio.play(); } catch (caught) { console.error('Voice playback failed:', caught); } }
 
   async function send(): Promise<void> {
-    if (!message.trim() || busy || outcome) return;
+    if (!message.trim() || busy || done) return;
     setBusy(true); setError(undefined);
     try {
       const result = processPatientTurn(intake, message);
@@ -65,43 +74,25 @@ export default function CheckIn() {
     } finally { setBusy(false); }
   }
 
-  async function confirm(slotId: string): Promise<void> {
-    if (!outcome || busy) return;
-    setBusy(true); setError(undefined);
-    try {
-      const response = await fetch('/api/book', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ patientId: PATIENT_ID, slotId, specialty: outcome.triage.recommendedSpecialty, reason: outcome.triage.rationale }) });
-      if (!response.ok) throw new Error(`Booking service returned ${response.status}.`);
-      setBooking(AppointmentResultSchema.parse(await response.json()));
-    } catch (caught) {
-      console.error('Booking seam unavailable:', caught);
-      setError('We could not complete the booking. Please contact your provider’s office to schedule.');
-    } finally { setBusy(false); }
-  }
-
   return <main>
-    <header><p className="eyebrow">Attune · synthetic demo</p><h1>Check your next step</h1><p className="disclaimer">{DISCLAIMER}</p></header>
+    <header><Link className="back-link" href="/">← Attune</Link><NavTabs /><h1>Check your next step</h1><p className="disclaimer">{DISCLAIMER}</p></header>
     <section className="chat" aria-label="Triage conversation">
       {intake.turns.length === 0 && <p className="agent">Tell us what is going on. I’ll ask up to six focused questions.</p>}
       {intake.turns.map((turn, index) => <p className={turn.role} key={`${turn.role}-${index}`}>{turn.text}</p>)}
     </section>
-    {!outcome && <section className="voice-hero">
+    {!done && <section className="voice-hero">
       <button className={`mic${recording ? ' recording' : ''}`} type="button" onClick={() => recording ? stopRecording() : void startRecording()} disabled={busy} aria-pressed={recording} aria-label={recording ? 'Stop recording and transcribe' : 'Start a voice conversation'} />
       <p className="mic-status">{recording ? 'Listening… tap to stop' : busy ? 'Working…' : 'Tap to speak'}</p>
     </section>}
-    {!outcome && <form onSubmit={(event) => { event.preventDefault(); void send(); }}>
+    {!done && <form onSubmit={(event) => { event.preventDefault(); void send(); }}>
       <label htmlFor="message">Or type your message</label>
-      <textarea id="message" value={message} onChange={(event) => setMessage(event.target.value)} placeholder="For example: My wrists have been more painful since yesterday." disabled={busy} />
+      <textarea id="message" value={message} onChange={(event) => setMessage(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); void send(); } }} placeholder="For example: My wrists have been more painful since yesterday." disabled={busy} />
       <button type="submit" disabled={busy || !message.trim()}>{busy ? 'Checking…' : 'Send message'}</button>
     </form>}
     {error && <p className="error" role="alert">{error}</p>}
-    {outcome && <section className="outcome" aria-live="polite">
-      <p className="disclaimer">{outcome.triage.disclaimer}</p><button className="read" type="button" onClick={() => void speak(`${outcome.triage.disclaimer} ${outcome.triage.recommendedNextStep}`)}>Read this aloud</button><h2>{outcome.triage.acuity.replaceAll('_', ' ')}</h2>
-      <p><strong>Next step:</strong> {outcome.triage.recommendedNextStep}</p><p>{outcome.triage.rationale}</p>
-      <h3>Sources</h3><ul>{outcome.triage.citations.map((citation) => <li key={citation.source}>{citation.source}: {citation.snippet}</li>)}</ul>
-      <h3>Coverage (mock)</h3><p>{outcome.insurance.payer} · {outcome.insurance.planName} · {outcome.insurance.copays.map((copay) => `${copay.serviceType}: ${copay.inNetwork ?? 'not listed'}`).join(', ')}</p>
-      {outcome.providers.length > 0 && <><h3>In-network suggestions (mock)</h3><ul>{outcome.providers.map((provider) => <li key={provider.name}>{provider.name} — {provider.specialty}, {provider.distanceMiles} mi</li>)}</ul></>}
-      {outcome.appointmentOptions.length > 0 && <><h3>Appointment options</h3>{outcome.appointmentOptions.map((slot) => <button className="slot" key={slot.slotId} disabled={busy || Boolean(booking)} onClick={() => void confirm(slot.slotId)}>Confirm {new Date(slot.start).toLocaleString()} with {slot.practitionerDisplay}</button>)}</>}
-      {booking && <p className="success">Booked (mock): {new Date(booking.start).toLocaleString()} with {booking.practitionerDisplay}.</p>}
+    {done && <section className="outcome ready">
+      <p>Taking you to your results…</p>
+      <Link className="cta" href="/results">Open results</Link>
     </section>}
   </main>;
 }
