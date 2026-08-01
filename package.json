@@ -1,0 +1,10 @@
+{
+  "name": "bridgecare-prototype",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev": "npm run dev --workspace=@bridgecare/voice",
+    "build": "npm run build --workspace=@bridgecare/voice",
+    "test": "npm run test --workspace=@bridgecare/voice"
+  }
+}
