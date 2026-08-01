@@ -1,20 +1,15 @@
 import { NextResponse } from 'next/server';
 import { AppointmentRequestSchema, AppointmentResultSchema } from '@bridgecare/shared';
-import { callAnalysisService } from '../../../lib/analysis-service';
+import { runPartBBooking } from '../../../lib/part-b';
+
+export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
   try {
     const payload = AppointmentRequestSchema.parse(await request.json());
-    const response = await callAnalysisService('/api/book', payload);
-    const body = await response.json().catch(() => ({ error: 'Analysis service returned an invalid response.' }));
-
-    if (!response.ok) {
-      return NextResponse.json({ error: body.error ?? 'Analysis service could not complete the booking.' }, { status: response.status });
-    }
-
-    return NextResponse.json(AppointmentResultSchema.parse(body));
+    return NextResponse.json(AppointmentResultSchema.parse(await runPartBBooking(payload)));
   } catch (error) {
-    console.error('Booking service request failed:', error instanceof Error ? error.message : error);
-    return NextResponse.json({ error: 'Analysis service is unavailable. No appointment was booked.' }, { status: 503 });
+    console.error('Part B booking failed:', error instanceof Error ? error.message : error);
+    return NextResponse.json({ error: 'The Medplum appointment workflow could not complete.' }, { status: 503 });
   }
 }
