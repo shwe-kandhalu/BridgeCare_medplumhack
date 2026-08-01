@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
 import './styles.css';
-export const metadata: Metadata = { title: 'BridgeCare', description: 'Synthetic autoimmune triage prototype', applicationName: 'BridgeCare', appleWebApp: { capable: true, statusBarStyle: 'default', title: 'BridgeCare' } };
-export const viewport: Viewport = { themeColor: '#176b3a' };
+export const metadata: Metadata = { title: 'Attune', description: 'Agentic autoimmune care, on demand — empowering you to manage your condition and your life.', applicationName: 'Attune', appleWebApp: { capable: true, statusBarStyle: 'default', title: 'Attune' } };
+export const viewport: Viewport = { themeColor: '#3f7d8c' };
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) { return <html lang="en"><body>{children}</body></html>; }
