@@ -241,6 +241,47 @@ export async function persistObservations(state: AnalyzerState, request: Analyze
   }
 }
 
+export function makeAnalysisCommunication(input: {
+  patientId: string;
+  request: AnalyzeRequest;
+  triage: TriageResult;
+  insurance: MockCoverageSummary;
+  providers: ProviderSuggestion[];
+  appointmentOptions: SlotOption[];
+}): { resourceType: 'Communication'; id: string; status: 'completed'; subject: { reference: string }; sent: string; payload: Array<{ contentString: string }> } {
+  return {
+    resourceType: 'Communication',
+    id: randomUUID(),
+    status: 'completed',
+    subject: { reference: `Patient/${input.patientId}` },
+    sent: new Date().toISOString(),
+    payload: [
+      {
+        contentString: JSON.stringify({
+          type: 'bridgecare-triage-session',
+          transcript: input.request.transcript,
+          structuredSymptoms: input.request.structuredSymptoms,
+          triage: input.triage,
+          insurance: input.insurance,
+          providers: input.providers,
+          appointmentOptions: input.appointmentOptions,
+        }),
+      },
+    ],
+  };
+}
+
+async function persistAnalysisCommunication(communication: ReturnType<typeof makeAnalysisCommunication>): Promise<void> {
+  if (!medplumEnabled()) {
+    return;
+  }
+
+  const persisted = await createMedplumResource(communication);
+  if (!persisted) {
+    throw new Error('Medplum did not persist the completed triage session');
+  }
+}
+
 export async function analyzeRequest(request: AnalyzeRequest, state: AnalyzerState): Promise<TriageOutcome> {
   const parsedRequest = analyzeRequestSchema.parse(request);
   // Run the authoritative red-flag interrupt before any side effect.
@@ -251,16 +292,31 @@ export async function analyzeRequest(request: AnalyzeRequest, state: AnalyzerSta
   const redFlags = detectRedFlags([parsedRequest.structuredSymptoms.rawText, parsedRequest.transcript.map((turn) => turn.text).join(' ')].join(' '));
   const gate = buildGateDecision(triage, redFlags);
   const insurance = await buildCoverageSummary(parsedRequest.patientId);
+  const providers = buildProviderSuggestions(triage.recommendedSpecialty);
+  const appointmentOptions = getAvailableSlots(state, triage.recommendedSpecialty);
   state.latestTriageByPatient.set(parsedRequest.patientId, triage);
 
-  return triageOutcomeSchema.parse({
+  const outcome = triageOutcomeSchema.parse({
     triage,
     gate,
     insurance,
-    providers: buildProviderSuggestions(triage.recommendedSpecialty),
-    appointmentOptions: getAvailableSlots(state, triage.recommendedSpecialty),
+    providers,
+    appointmentOptions,
     disclaimerShown: true,
   });
+
+  await persistAnalysisCommunication(
+    makeAnalysisCommunication({
+      patientId: parsedRequest.patientId,
+      request: parsedRequest,
+      triage,
+      insurance,
+      providers,
+      appointmentOptions,
+    }),
+  );
+
+  return outcome;
 }
 
 export async function bookAppointment(request: AppointmentRequest, state: AnalyzerState): Promise<AppointmentResult> {

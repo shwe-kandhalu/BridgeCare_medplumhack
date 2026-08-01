@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { createIntake, DISCLAIMER, extractStructuredSymptoms, processPatientTurn, type TurnResult } from '../../lib/intake';
 import NavTabs from '../nav-tabs';
 
-const PATIENT_ID = 'synthetic-maya-001';
+const PATIENT_ID = '154e90b3-3562-4b02-8e46-4e62df95ed8e';
 const EMPTY_GROUNDING = GroundingSchema.parse({ citations: [], candidateMappings: [] });
 const OUTCOME_KEY = 'attune:lastOutcome';
 const BOOKING_KEY = 'attune:lastBooking';
