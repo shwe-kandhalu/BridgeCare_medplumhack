@@ -3,7 +3,7 @@ import type { RedFlagResult } from './contracts';
 const EMERGENCY: Array<[RegExp, string]> = [
   [/\b(chest\s+(pain|pressure|tightness)|pressure\s+in\s+(my\s+)?chest)\b/i, 'chest pain or pressure'],
   [/\b(short(ness)?\s+of\s+breath|can'?t\s+breathe|difficulty\s+breathing)\b/i, 'difficulty breathing'],
-  [/\b(face\s+droop|arm\s+weakness|slurred\s+speech|sudden\s+confusion)\b/i, 'possible stroke symptoms'],
+  [/\b(face\s+droop(?:ing)?|arm\s+weakness|speech\s+is\s+slurred|slurred\s+speech|sudden\s+confusion)\b/i, 'possible stroke symptoms'],
   [/\b(kill\s+myself|suicid(al|e)|end\s+my\s+life|want\s+to\s+die)\b/i, 'suicidal ideation or intent'],
   [/\b(blood\s+in\s+(my\s+)?(stool|vomit)|vomit(ing)?\s+blood)\b/i, 'blood in stool or vomit']
 ];

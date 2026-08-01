@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { AnalyzeRequestSchema, AppointmentResultSchema, GroundingSchema, TriageOutcomeSchema, type AppointmentResult, type TriageOutcome } from '@bridgecare/shared';
 import { createIntake, DISCLAIMER, extractStructuredSymptoms, processPatientTurn, type TurnResult } from '../lib/intake';
 
@@ -13,9 +13,17 @@ export default function Home() {
   const [booking, setBooking] = useState<AppointmentResult>();
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const recorder = useRef<MediaRecorder | null>(null);
+  const chunks = useRef<Blob[]>([]);
 
   async function analyze(result: TurnResult): Promise<void> {
-    const payload = AnalyzeRequestSchema.parse({ patientId: PATIENT_ID, structuredSymptoms: extractStructuredSymptoms(result.state), grounding: EMPTY_GROUNDING, transcript: result.state.turns, redFlagSignals: result.redFlags });
+    let grounding = EMPTY_GROUNDING;
+    try {
+      const groundingResponse = await fetch('/api/grounding', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ query: result.state.turns.filter((turn) => turn.role === 'patient').map((turn) => turn.text).join(' ') }) });
+      if (groundingResponse.ok) grounding = GroundingSchema.parse(await groundingResponse.json());
+    } catch (caught) { console.error('Grounding unavailable; conservative default will apply:', caught); }
+    const payload = AnalyzeRequestSchema.parse({ patientId: PATIENT_ID, structuredSymptoms: extractStructuredSymptoms(result.state), grounding, transcript: result.state.turns, redFlagSignals: result.redFlags });
     try {
       const response = await fetch('/api/analyze', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
       if (!response.ok) throw new Error(`Analyze service returned ${response.status}.`);
@@ -25,6 +33,22 @@ export default function Home() {
       setError('We could not reach the triage service. Please contact your provider for guidance. If this may be an emergency, call 911 or go to the nearest ER.');
     }
   }
+
+  async function startRecording(): Promise<void> {
+    setError(undefined);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      chunks.current = [];
+      mediaRecorder.ondataavailable = (event) => { if (event.data.size) chunks.current.push(event.data); };
+      mediaRecorder.onstop = () => { stream.getTracks().forEach((track) => track.stop()); void transcribe(); };
+      recorder.current = mediaRecorder; mediaRecorder.start(); setRecording(true);
+    } catch (caught) { console.error('Microphone permission denied or unavailable:', caught); setError('Microphone access is unavailable. You can continue using the text box below.'); }
+  }
+  function stopRecording(): void { recorder.current?.stop(); setRecording(false); }
+  async function transcribe(): Promise<void> {
+    try { setBusy(true); const audio = new Blob(chunks.current, { type: recorder.current?.mimeType || 'audio/webm' }); const form = new FormData(); form.append('audio', audio, 'message.webm'); const response = await fetch('/api/voice/transcribe', { method: 'POST', body: form }); if (!response.ok) throw new Error(`Transcription service returned ${response.status}.`); const data = await response.json() as { transcript: string }; setMessage(data.transcript); } catch (caught) { console.error('Voice transcription failed:', caught); setError('We could not transcribe that recording. Please use the text box.'); } finally { setBusy(false); } }
+  async function speak(text: string): Promise<void> { try { const response = await fetch('/api/voice/speak', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text }) }); if (!response.ok) return; const url = URL.createObjectURL(await response.blob()); const audio = new Audio(url); audio.onended = () => URL.revokeObjectURL(url); await audio.play(); } catch (caught) { console.error('Voice playback failed:', caught); } }
 
   async function send(): Promise<void> {
     if (!message.trim() || busy || outcome) return;
@@ -60,12 +84,13 @@ export default function Home() {
     </section>
     {!outcome && <form onSubmit={(event) => { event.preventDefault(); void send(); }}>
       <label htmlFor="message">Your message</label>
+      <button className="voice" type="button" onClick={() => recording ? stopRecording() : void startRecording()} disabled={busy}>{recording ? 'Stop and transcribe' : 'Hold a voice conversation'}</button>
       <textarea id="message" value={message} onChange={(event) => setMessage(event.target.value)} placeholder="For example: My wrists have been more painful since yesterday." disabled={busy} />
       <button type="submit" disabled={busy || !message.trim()}>{busy ? 'Checking…' : 'Send message'}</button>
     </form>}
     {error && <p className="error" role="alert">{error}</p>}
     {outcome && <section className="outcome" aria-live="polite">
-      <p className="disclaimer">{outcome.triage.disclaimer}</p><h2>{outcome.triage.acuity.replaceAll('_', ' ')}</h2>
+      <p className="disclaimer">{outcome.triage.disclaimer}</p><button className="read" type="button" onClick={() => void speak(`${outcome.triage.disclaimer} ${outcome.triage.recommendedNextStep}`)}>Read this aloud</button><h2>{outcome.triage.acuity.replaceAll('_', ' ')}</h2>
       <p><strong>Next step:</strong> {outcome.triage.recommendedNextStep}</p><p>{outcome.triage.rationale}</p>
       <h3>Sources</h3><ul>{outcome.triage.citations.map((citation) => <li key={citation.source}>{citation.source}: {citation.snippet}</li>)}</ul>
       <h3>Coverage (mock)</h3><p>{outcome.insurance.payer} · {outcome.insurance.planName} · {outcome.insurance.copays.map((copay) => `${copay.serviceType}: ${copay.inNetwork ?? 'not listed'}`).join(', ')}</p>
