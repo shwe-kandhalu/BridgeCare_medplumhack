@@ -15,12 +15,17 @@ import {
   type TriageOutcome,
   type TriageResult,
 } from '../../../packages/shared/contracts.js';
+import { randomUUID } from 'node:crypto';
 import { detectRedFlags } from '../../../packages/shared/redflags.js';
-import { DISCLAIMER, mockCoverageSummary, placeholderProviders, seededCondition, seededPatient, seededSlots } from './data.js';
-import { makeAppointmentResource, makeBundleResource, makeObservationResource, type FhirObservationResource } from './fhir.js';
+import { DISCLAIMER, demoIds, placeholderProviders, seededCondition, seededPatient, seededSlots } from './data.js';
+import { makeAppointmentResource, makeBundleResource, makeBusySlotResource, makeObservationResource, type FhirObservationResource } from './fhir.js';
+import { medplumEnabled, createResource as createMedplumResource, createTransactionBundle } from './medplumClient.js';
+import { fetchStediCoverageSummary } from './stediClient.js';
 
 type AnalyzerState = {
   observationsByPatient: Map<string, FhirObservationResource[]>;
+  latestTriageByPatient: Map<string, TriageResult>;
+  slots: Array<SlotOption & { specialty: string; busy: boolean }>;
   bookedSlotIds: Set<string>;
   appointmentsById: Map<string, AppointmentResult>;
 };
@@ -32,31 +37,19 @@ const acuityRank: Record<Acuity, number> = {
   emergency: 3,
 };
 
-let observationCounter = 0;
-let appointmentCounter = 0;
-let packetCounter = 0;
-
 export function createAnalyzerState(): AnalyzerState {
   return {
     observationsByPatient: new Map(),
+    latestTriageByPatient: new Map(),
+    slots: seededSlots.map((slot) => ({ ...slot })),
     bookedSlotIds: new Set(),
     appointmentsById: new Map(),
   };
 }
 
 function nextId(prefix: string): string {
-  if (prefix === 'observation') {
-    observationCounter += 1;
-    return `${prefix}-${observationCounter}`;
-  }
-
-  if (prefix === 'appointment') {
-    appointmentCounter += 1;
-    return `${prefix}-${appointmentCounter}`;
-  }
-
-  packetCounter += 1;
-  return `${prefix}-${packetCounter}`;
+  void prefix;
+  return randomUUID();
 }
 
 function normalizeText(value: string): string {
@@ -181,8 +174,21 @@ export function buildGateDecision(triage: TriageResult, redFlags: { triggered: b
   return { actions };
 }
 
-export function buildMockCoverageSummary(): MockCoverageSummary {
-  return mockCoverageSummary;
+/** A failed eligibility check must be visible to the patient, never masked as coverage. */
+export function buildCoverageUnavailableSummary(memberId: string): MockCoverageSummary {
+  return {
+    payer: 'Coverage unavailable',
+    planName: 'Stedi sandbox eligibility could not be retrieved',
+    memberId,
+    active: false,
+    copays: [{ serviceType: 'plan coverage and general benefits', inNetwork: 'coverage unavailable' }],
+    source: 'stedi_sandbox',
+  };
+}
+
+export async function buildCoverageSummary(memberId: string): Promise<MockCoverageSummary> {
+  const stediCoverage = await fetchStediCoverageSummary(memberId);
+  return stediCoverage ?? buildCoverageUnavailableSummary(memberId);
 }
 
 export function buildProviderSuggestions(recommendedSpecialty: string): ProviderSuggestion[] {
@@ -203,11 +209,13 @@ export function buildProviderSuggestions(recommendedSpecialty: string): Provider
     });
 }
 
-export function getAvailableSlots(): SlotOption[] {
-  return seededSlots.filter((slot) => !slot.busy).map(({ specialty: _specialty, busy: _busy, ...slot }) => slot);
+export function getAvailableSlots(state: AnalyzerState, specialty: string): SlotOption[] {
+  return state.slots
+    .filter((slot) => !slot.busy && slot.specialty === specialty)
+    .map(({ specialty: _specialty, busy: _busy, ...slot }) => slot);
 }
 
-export function persistObservations(state: AnalyzerState, request: AnalyzeRequest): void {
+export async function persistObservations(state: AnalyzerState, request: AnalyzeRequest): Promise<void> {
   const created = request.structuredSymptoms.observations.map((observation) =>
     makeObservationResource({
       id: nextId('observation'),
@@ -223,29 +231,46 @@ export function persistObservations(state: AnalyzerState, request: AnalyzeReques
 
   const current = state.observationsByPatient.get(request.patientId) ?? [];
   state.observationsByPatient.set(request.patientId, [...current, ...created]);
+
+  // Do not claim persistence succeeded until Medplum has accepted every observation.
+  if (medplumEnabled()) {
+    const persisted = await Promise.all(created.map((observation) => createMedplumResource(observation)));
+    if (persisted.some((resource) => resource === null)) {
+      throw new Error('Medplum did not persist all symptom observations');
+    }
+  }
 }
 
-export function analyzeRequest(request: AnalyzeRequest, state: AnalyzerState): TriageOutcome {
+export async function analyzeRequest(request: AnalyzeRequest, state: AnalyzerState): Promise<TriageOutcome> {
   const parsedRequest = analyzeRequestSchema.parse(request);
-  persistObservations(state, parsedRequest);
+  // Run the authoritative red-flag interrupt before any side effect.
+  detectRedFlags([parsedRequest.structuredSymptoms.rawText, parsedRequest.transcript.map((turn) => turn.text).join(' ')].join(' '));
+  await persistObservations(state, parsedRequest);
 
   const triage = scoreTriage(parsedRequest);
   const redFlags = detectRedFlags([parsedRequest.structuredSymptoms.rawText, parsedRequest.transcript.map((turn) => turn.text).join(' ')].join(' '));
   const gate = buildGateDecision(triage, redFlags);
+  const insurance = await buildCoverageSummary(parsedRequest.patientId);
+  state.latestTriageByPatient.set(parsedRequest.patientId, triage);
 
   return triageOutcomeSchema.parse({
     triage,
     gate,
-    insurance: buildMockCoverageSummary(),
+    insurance,
     providers: buildProviderSuggestions(triage.recommendedSpecialty),
-    appointmentOptions: getAvailableSlots(),
+    appointmentOptions: getAvailableSlots(state, triage.recommendedSpecialty),
     disclaimerShown: true,
   });
 }
 
-export function bookAppointment(request: AppointmentRequest, state: AnalyzerState): AppointmentResult {
+export async function bookAppointment(request: AppointmentRequest, state: AnalyzerState): Promise<AppointmentResult> {
   const parsedRequest = appointmentRequestSchema.parse(request);
-  const slot = seededSlots.find((candidate) => candidate.slotId === parsedRequest.slotId);
+  const triage = state.latestTriageByPatient.get(parsedRequest.patientId);
+  if (!triage || triage.acuity !== 'contact_provider' || triage.recommendedSpecialty !== parsedRequest.specialty) {
+    throw new Error('Appointment booking requires a matching appointment proposal from the latest triage');
+  }
+
+  const slot = state.slots.find((candidate) => candidate.slotId === parsedRequest.slotId);
 
   if (!slot) {
     throw new Error(`Unknown slot: ${parsedRequest.slotId}`);
@@ -268,7 +293,7 @@ export function bookAppointment(request: AppointmentRequest, state: AnalyzerStat
 
   const communication = {
     resourceType: 'Communication' as const,
-    id: `communication-${appointmentId}`,
+    id: randomUUID(),
     status: 'completed' as const,
     subject: { reference: `Patient/${parsedRequest.patientId}` },
     sent: new Date().toISOString(),
@@ -278,7 +303,12 @@ export function bookAppointment(request: AppointmentRequest, state: AnalyzerStat
           reason: parsedRequest.reason,
           specialty: parsedRequest.specialty,
           appointmentSlot: parsedRequest.slotId,
-          citations: [],
+          triage: {
+            acuity: triage.acuity,
+            rationale: triage.rationale,
+            recommendedNextStep: triage.recommendedNextStep,
+            citations: triage.citations,
+          },
         }),
       },
     ],
@@ -295,7 +325,7 @@ export function bookAppointment(request: AppointmentRequest, state: AnalyzerStat
     reason: parsedRequest.reason,
   });
 
-  makeBundleResource({
+  const contextPacket = makeBundleResource({
     bundleId: packetId,
     patient,
     condition,
@@ -303,6 +333,22 @@ export function bookAppointment(request: AppointmentRequest, state: AnalyzerStat
     communication,
     appointment,
   });
+
+  const busySlot = makeBusySlotResource({
+    slotId: slot.slotId,
+    start: slot.start,
+    end: slot.end,
+  });
+
+  // A remote booking is successful only when its packet, appointment, and Slot
+  // update commit together. Never return a local-only appointment on failure.
+  if (medplumEnabled()) {
+    const idempotencyKey = `packet-${packetId}`;
+    const transactionResult = await createTransactionBundle(contextPacket, idempotencyKey, [busySlot]);
+    if (!transactionResult) {
+      throw new Error('Medplum did not persist the appointment booking');
+    }
+  }
 
   slot.busy = true;
   state.bookedSlotIds.add(slot.slotId);
@@ -321,9 +367,9 @@ export function bookAppointment(request: AppointmentRequest, state: AnalyzerStat
 
 export function createSampleAnalyzeRequest(): AnalyzeRequest {
   return analyzeRequestSchema.parse({
-    patientId: 'maya',
+    patientId: demoIds.patient,
     structuredSymptoms: {
-      patientId: 'maya',
+      patientId: demoIds.patient,
       observations: [
         { code: '72514-3', display: 'Pain severity', value: 6, unit: '10-point scale' },
         { code: 'morning-stiffness-min', display: 'Morning stiffness', value: 45, unit: 'min' },

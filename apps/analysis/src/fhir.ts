@@ -53,6 +53,27 @@ export const appointmentResourceSchema = z.object({
   description: z.string().min(1).optional(),
 });
 
+export const slotResourceSchema = z.object({
+  resourceType: z.literal('Slot'),
+  id: z.string().min(1),
+  schedule: referenceSchema,
+  start: z.string().min(1),
+  end: z.string().min(1),
+  status: z.enum(['busy', 'free', 'busy-unavailable', 'busy-tentative', 'entered-in-error']),
+});
+
+export const practitionerResourceSchema = z.object({
+  resourceType: z.literal('Practitioner'),
+  id: z.string().min(1),
+  name: z.array(z.object({ family: z.string().optional(), given: z.array(z.string()).optional() })).optional(),
+});
+
+export const scheduleResourceSchema = z.object({
+  resourceType: z.literal('Schedule'),
+  id: z.string().min(1),
+  actor: z.array(referenceSchema).min(1),
+});
+
 export const bundleEntrySchema = z.object({
   fullUrl: z.string().min(1).optional(),
   resource: z.unknown(),
@@ -70,9 +91,12 @@ export type FhirPatientResource = z.infer<typeof patientResourceSchema>;
 export type FhirConditionResource = z.infer<typeof conditionResourceSchema>;
 export type FhirCommunicationResource = z.infer<typeof communicationResourceSchema>;
 export type FhirAppointmentResource = z.infer<typeof appointmentResourceSchema>;
+export type FhirSlotResource = z.infer<typeof slotResourceSchema>;
+export type FhirPractitionerResource = z.infer<typeof practitionerResourceSchema>;
+export type FhirScheduleResource = z.infer<typeof scheduleResourceSchema>;
 export type FhirBundleResource = z.infer<typeof bundleResourceSchema>;
 
-function validateKnownResource(resource: unknown): void {
+export function validateFhirResource(resource: unknown): void {
   if (!resource || typeof resource !== 'object' || !('resourceType' in resource)) {
     throw new Error('FHIR resource missing resourceType');
   }
@@ -93,6 +117,15 @@ function validateKnownResource(resource: unknown): void {
     case 'Appointment':
       appointmentResourceSchema.parse(resource);
       return;
+    case 'Slot':
+      slotResourceSchema.parse(resource);
+      return;
+    case 'Practitioner':
+      practitionerResourceSchema.parse(resource);
+      return;
+    case 'Schedule':
+      scheduleResourceSchema.parse(resource);
+      return;
     default:
       throw new Error(`Unsupported FHIR resourceType: ${(resource as { resourceType: string }).resourceType}`);
   }
@@ -101,9 +134,20 @@ function validateKnownResource(resource: unknown): void {
 export function validateBundle(bundle: unknown): FhirBundleResource {
   const parsed = bundleResourceSchema.parse(bundle);
   for (const entry of parsed.entry) {
-    validateKnownResource(entry.resource);
+    validateFhirResource(entry.resource);
   }
   return parsed;
+}
+
+export function makeBusySlotResource(input: { slotId: string; start: string; end: string; scheduleRef?: string }): FhirSlotResource {
+  return slotResourceSchema.parse({
+    resourceType: 'Slot',
+    id: input.slotId,
+    schedule: { reference: input.scheduleRef ?? 'Schedule/cb014c56-735d-4ff2-98d6-6050e5869a02' },
+    start: input.start,
+    end: input.end,
+    status: 'busy',
+  });
 }
 
 export function makeObservationResource(input: {

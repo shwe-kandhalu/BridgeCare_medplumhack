@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { analyzeRequest, bookAppointment, buildGateDecision, createAnalyzerState, createSampleAnalyzeRequest, scoreTriage } from './core.js';
+import { analyzeRequest, bookAppointment, buildCoverageUnavailableSummary, buildGateDecision, createAnalyzerState, createSampleAnalyzeRequest, scoreTriage } from './core.js';
 import { detectRedFlags } from '../../../packages/shared/redflags.js';
 import { appointmentResultSchema, triageOutcomeSchema } from '../../../packages/shared/contracts.js';
 import { appointmentResourceSchema, observationResourceSchema, validateBundle } from './fhir.js';
+import { mapStediEligibilityResponse, STEDI_SANDBOX_ELIGIBILITY_REQUEST } from './stediClient.js';
 
 test('classifier cost matrix keeps conservative default', () => {
   const request = createSampleAnalyzeRequest();
@@ -92,17 +93,75 @@ test('FHIR bundle validation accepts the deterministic packet', () => {
   assert.equal(bundle.entry.length, 5);
 });
 
-test('analyze and book stay schema-valid', () => {
+test('analyze and book stay schema-valid', async () => {
   const state = createAnalyzerState();
-  const analyzeOutcome = analyzeRequest(createSampleAnalyzeRequest(), state);
+  const request = createSampleAnalyzeRequest();
+  const analyzeOutcome = await analyzeRequest(request, state);
   triageOutcomeSchema.parse(analyzeOutcome);
 
-  const booking = bookAppointment({ patientId: 'maya', slotId: 'slot-001', specialty: 'rheumatology', reason: 'follow-up after triage' }, state);
+  const booking = await bookAppointment({ patientId: request.patientId, slotId: analyzeOutcome.appointmentOptions[0]!.slotId, specialty: 'rheumatology', reason: 'follow-up after triage' }, state);
   appointmentResultSchema.parse(booking);
+});
+
+test('booking requires a matching completed triage and returns specialty-matched slots', async () => {
+  const state = createAnalyzerState();
+  const request = createSampleAnalyzeRequest();
+  await assert.rejects(
+    () => bookAppointment({ patientId: request.patientId, slotId: 'c592246d-d566-4c59-a0cf-1f56879275b7', specialty: 'rheumatology', reason: 'follow-up' }, state),
+    /matching appointment proposal/,
+  );
+
+  const outcome = await analyzeRequest(request, state);
+  assert.ok(outcome.appointmentOptions.length > 0);
+  assert.equal(outcome.appointmentOptions.length, 2);
 });
 
 test('detectRedFlags catches obvious emergencies', () => {
   const result = detectRedFlags('I have chest pain and I cannot breathe.');
   assert.equal(result.triggered, true);
   assert.equal(result.forcedAcuity, 'emergency');
+});
+
+test('stedi eligibility responses map into the mock coverage summary shape', () => {
+  const summary = mapStediEligibilityResponse(
+    {
+      id: 'ec_550e8400-e29b-41d4-a716-446655440000',
+      payer: { businessName: 'UnitedHealthcare' },
+      planInformation: { planName: 'Choice Plus' },
+      subscriber: { memberId: 'UHC202649' },
+      planStatus: [{ statusCode: '1', status: 'Active Coverage', planDetails: 'Choice Plus' }],
+      benefitsInformation: [
+        {
+          code: '30',
+          serviceTypeCodes: ['30'],
+          benefitAmount: { formatted: '$25' },
+        },
+        {
+          code: '49',
+          serviceTypeCodes: ['30'],
+          benefitAmount: { formatted: '$500' },
+        },
+      ],
+    },
+    'fallback-member',
+  );
+
+  assert.equal(summary.payer, 'UnitedHealthcare');
+  assert.equal(summary.planName, 'Choice Plus');
+  assert.equal(summary.memberId, 'UHC202649');
+  assert.equal(summary.source, 'stedi_sandbox');
+  assert.ok(summary.copays.length > 0);
+});
+
+test('Stedi uses the documented synthetic test fixture, never the BridgeCare patient ID', () => {
+  assert.equal(STEDI_SANDBOX_ELIGIBILITY_REQUEST.subscriber.memberId, 'UHC202649');
+  assert.equal(STEDI_SANDBOX_ELIGIBILITY_REQUEST.subscriber.firstName, 'John');
+  assert.equal(STEDI_SANDBOX_ELIGIBILITY_REQUEST.dependents[0]?.dateOfBirth, '19521121');
+});
+
+test('an unavailable Stedi result is explicit and never presents as active coverage', () => {
+  const summary = buildCoverageUnavailableSummary('maya');
+  assert.equal(summary.active, false);
+  assert.equal(summary.payer, 'Coverage unavailable');
+  assert.equal(summary.copays[0]?.inNetwork, 'coverage unavailable');
 });

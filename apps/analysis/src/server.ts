@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { analyzeRequest, bookAppointment, createAnalyzerState, createSampleAnalyzeRequest } from './core.js';
 import { analyzeRequestSchema, appointmentRequestSchema, appointmentResultSchema, triageOutcomeSchema } from '../../../packages/shared/contracts.js';
@@ -36,7 +37,7 @@ const server = createServer(async (request, response) => {
     if (request.method === 'POST' && request.url === '/api/analyze') {
       const body = await readRequestBody(request);
       const parsed = analyzeRequestSchema.parse(JSON.parse(body));
-      const outcome = analyzeRequest(parsed, state);
+      const outcome = await analyzeRequest(parsed, state);
       sendJson(response, 200, triageOutcomeSchema.parse(outcome));
       return;
     }
@@ -44,7 +45,7 @@ const server = createServer(async (request, response) => {
     if (request.method === 'POST' && request.url === '/api/book') {
       const body = await readRequestBody(request);
       const parsed = appointmentRequestSchema.parse(JSON.parse(body));
-      const result = bookAppointment(parsed, state);
+      const result = await bookAppointment(parsed, state);
       sendJson(response, 200, appointmentResultSchema.parse(result));
       return;
     }
