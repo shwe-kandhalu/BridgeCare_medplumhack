@@ -4,7 +4,7 @@ import { DISCLAIMER } from '../../../lib/intake';
 
 const CITATION = { source: 'Synthetic prototype protocol', snippet: 'This demo routes symptoms to an appropriate care setting and does not diagnose.' };
 
-function cannedOutcome(redFlagSignals: { triggered: boolean; matches: string[]; forcedAcuity?: 'urgent' | 'emergency' }): TriageOutcome {
+function cannedOutcome(redFlagSignals: { triggered: boolean; matches: string[]; forcedAcuity?: 'urgent' | 'emergency' | undefined }): TriageOutcome {
   const acute = redFlagSignals.triggered;
   return TriageOutcomeSchema.parse({
     triage: {

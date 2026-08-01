@@ -1,10 +1,21 @@
 {
   "name": "bridgecare-prototype",
   "private": true,
+  "type": "module",
   "workspaces": ["apps/*", "packages/*"],
   "scripts": {
     "dev": "npm run dev --workspace=@bridgecare/voice",
-    "build": "npm run build --workspace=@bridgecare/voice",
-    "test": "npm run test --workspace=@bridgecare/voice"
+    "build": "npm run build --workspace=@bridgecare/voice && tsc -p tsconfig.json",
+    "start": "node dist/apps/analysis/src/server.js",
+    "test": "npm run build && node --test dist/apps/analysis/**/*.test.js dist/packages/shared/*.test.js && npm run test --workspace=@bridgecare/voice",
+    "seed": "npm run build && node dist/apps/analysis/src/scripts/seed.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.1",
+    "typescript": "^5.9.2"
   }
 }
