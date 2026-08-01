@@ -1,10 +1,19 @@
 'use client';
 import { useRef, useState } from 'react';
-import { AnalyzeRequestSchema, AppointmentResultSchema, GroundingSchema, TriageOutcomeSchema, type AppointmentResult, type TriageOutcome } from '@bridgecare/shared';
+import { AnalyzeRequestSchema, AppointmentResultSchema, GroundingSchema, IntakeGuidanceSchema, TriageOutcomeSchema, type AppointmentResult, type IntakeGuidance, type TriageOutcome } from '@bridgecare/shared';
 import { createIntake, DISCLAIMER, extractStructuredSymptoms, processPatientTurn, type TurnResult } from '../../lib/intake';
 
 const PATIENT_ID = '154e90b3-3562-4b02-8e46-4e62df95ed8e';
 const EMPTY_GROUNDING = GroundingSchema.parse({ citations: [], candidateMappings: [] });
+const EMPTY_GUIDANCE = IntakeGuidanceSchema.parse({ matches: [] });
+
+async function retrieveIntakeGuidance(query: string): Promise<IntakeGuidance> {
+  try {
+    const response = await fetch('/api/intake-guidance', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ query }) });
+    if (!response.ok) return EMPTY_GUIDANCE;
+    return IntakeGuidanceSchema.parse(await response.json());
+  } catch (caught) { console.error('Intake guidance unavailable; ending intake conservatively:', caught); return EMPTY_GUIDANCE; }
+}
 
 export default function CheckIn() {
   const [intake, setIntake] = useState(() => createIntake(PATIENT_ID));
@@ -54,7 +63,7 @@ export default function CheckIn() {
     if (!message.trim() || busy || outcome) return;
     setBusy(true); setError(undefined);
     try {
-      const result = processPatientTurn(intake, message);
+      const result = await processPatientTurn(intake, message, retrieveIntakeGuidance);
       setIntake(result.state); setMessage('');
       const lastTurn = result.state.turns[result.state.turns.length - 1];
       if (lastTurn?.role === 'agent') void speak(lastTurn.text);
