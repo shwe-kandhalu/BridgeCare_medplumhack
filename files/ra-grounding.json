@@ -1,58 +1,156 @@
 [
   {
+    "id": "ra-flare-mild-selfcare",
     "text": "A mild rheumatoid arthritis flare that matches your usual pattern - increased joint pain and stiffness without new or severe symptoms - can often be self-managed: rest the affected joints, apply heat or cold, and take medications as set out in your care plan. Seek care sooner if symptoms are more severe than your typical flare, do not improve within a few days, or new symptoms appear.",
-    "metadata": { "source": "ra-flare-mild-selfcare", "condition": "RA", "acuity": "self_manage", "pattern": "mild_flare_within_baseline" }
+    "metadata": {
+      "source": "ra-flare-mild-selfcare",
+      "condition": "RA",
+      "acuity": "self_manage",
+      "pattern": "mild_flare_within_baseline",
+      "followUpQuestion": "Is this flare similar in pain and stiffness to flares you've had before, or does it feel different this time?"
+    }
   },
   {
+    "id": "ra-contact-team-routine",
     "text": "Contact your rheumatology team within 1-2 days if a flare is worse than usual, lasts longer than your typical flare, or is not responding to your usual self-management. Also reach out if you are unsure whether a change in symptoms needs a medication adjustment.",
-    "metadata": { "source": "ra-contact-team-routine", "condition": "RA", "acuity": "contact_provider", "pattern": "worsening_beyond_baseline" }
+    "metadata": {
+      "source": "ra-contact-team-routine",
+      "condition": "RA",
+      "acuity": "contact_provider",
+      "pattern": "worsening_beyond_baseline",
+      "followUpQuestion": "Has this flare lasted longer or felt worse than your usual flares, or is it not responding to your normal self-care?"
+    }
   },
   {
+    "id": "ra-morning-stiffness",
     "text": "Morning stiffness lasting under 30-60 minutes is common in rheumatoid arthritis and usually manageable at home with gentle movement and your usual medications. Stiffness markedly longer than your baseline, or paired with significant new swelling or fever, warrants contacting your care team.",
-    "metadata": { "source": "ra-morning-stiffness", "condition": "RA", "acuity": "self_manage", "pattern": "morning_stiffness" }
+    "metadata": {
+      "source": "ra-morning-stiffness",
+      "condition": "RA",
+      "acuity": "self_manage",
+      "pattern": "morning_stiffness",
+      "followUpQuestion": "About how many minutes does your morning stiffness usually last, and has that changed recently?"
+    }
   },
   {
+    "id": "ra-swollen-hot-joint",
     "text": "A newly swollen, warm, or red joint should be discussed with your care team, especially if it is a single joint and out of proportion to your usual flare. A hot, acutely painful single joint with fever can signal joint infection and needs same-day evaluation.",
-    "metadata": { "source": "ra-swollen-hot-joint", "condition": "RA", "acuity": "contact_provider", "pattern": "single_joint_swelling_warmth" }
+    "metadata": {
+      "source": "ra-swollen-hot-joint",
+      "condition": "RA",
+      "acuity": "contact_provider",
+      "pattern": "single_joint_swelling_warmth",
+      "followUpQuestion": "Is one specific joint newly swollen, warm, or red compared to your other joints?"
+    }
   },
   {
+    "id": "ra-fever-immunosuppression",
     "text": "A fever while taking biologics, methotrexate, or steroids should be treated as urgent, because these medications suppress the immune system and can mask or worsen infection. Seek same-day medical evaluation for a fever, and emergency care for a high fever with shaking chills, confusion, or difficulty breathing.",
-    "metadata": { "source": "ra-fever-immunosuppression", "condition": "RA", "acuity": "urgent", "pattern": "fever_on_immunosuppression" }
+    "metadata": {
+      "source": "ra-fever-immunosuppression",
+      "condition": "RA",
+      "acuity": "urgent",
+      "pattern": "fever_on_immunosuppression",
+      "followUpQuestion": "Do you currently have a fever, and are you taking a biologic, methotrexate, or steroid medication?"
+    }
   },
   {
+    "id": "ra-redflag-emergency",
     "text": "Call 911 or go to the emergency department for chest pain or pressure, difficulty breathing, signs of stroke (face drooping, arm weakness, slurred speech, sudden confusion), sudden severe abdominal pain, blood in stool or vomit, or a sudden severe headache or vision loss. These are emergencies regardless of your arthritis.",
-    "metadata": { "source": "ra-redflag-emergency", "condition": "RA", "acuity": "emergency", "pattern": "red_flag_systemic" }
+    "metadata": {
+      "source": "ra-redflag-emergency",
+      "condition": "RA",
+      "acuity": "emergency",
+      "pattern": "red_flag_systemic",
+      "followUpQuestion": "Are you having any chest pain, trouble breathing, sudden confusion, slurred speech, or a severe headache right now?"
+    }
   },
   {
+    "id": "ra-infection-signs",
     "text": "Signs of a possible serious infection - fever, chills, a rapidly spreading warm red area of skin, a productive cough with fever, or feeling suddenly very unwell - need prompt evaluation, and urgently so for anyone on immunosuppressive therapy. When in doubt, seek same-day care.",
-    "metadata": { "source": "ra-infection-signs", "condition": "RA", "acuity": "urgent", "pattern": "possible_infection" }
+    "metadata": {
+      "source": "ra-infection-signs",
+      "condition": "RA",
+      "acuity": "urgent",
+      "pattern": "possible_infection",
+      "followUpQuestion": "Do you have any signs of infection, like chills, a spreading red area of skin, a cough with fever, or suddenly feeling very unwell?"
+    }
   },
   {
+    "id": "ra-medication-concern",
     "text": "Reach out to your care team about a missed or delayed biologic dose, new side effects, or questions about whether to pause a medication (for example before surgery or during an infection). Do not stop or change immunosuppressive medication without guidance unless you are having an emergency.",
-    "metadata": { "source": "ra-medication-concern", "condition": "RA", "acuity": "contact_provider", "pattern": "medication_issue" }
+    "metadata": {
+      "source": "ra-medication-concern",
+      "condition": "RA",
+      "acuity": "contact_provider",
+      "pattern": "medication_issue",
+      "followUpQuestion": "Have you missed a dose of your biologic or other RA medication, or noticed any new side effects?"
+    }
   },
   {
+    "id": "ra-fatigue-systemic",
     "text": "Fatigue is a common part of rheumatoid arthritis and, on its own and at your usual level, can be managed with pacing, rest, and sleep. New, severe, or rapidly worsening fatigue - especially with fever, weight loss, or shortness of breath - should be reported to your care team.",
-    "metadata": { "source": "ra-fatigue-systemic", "condition": "RA", "acuity": "self_manage", "pattern": "fatigue" }
+    "metadata": {
+      "source": "ra-fatigue-systemic",
+      "condition": "RA",
+      "acuity": "self_manage",
+      "pattern": "fatigue",
+      "followUpQuestion": "Is your fatigue at its usual level, or is it new, severe, or getting rapidly worse?"
+    }
   },
   {
+    "id": "ra-rapid-worsening",
     "text": "Symptoms that worsen rapidly over hours, or a flare far more severe than anything you have had before, should be evaluated the same day rather than self-managed. Rapid change is itself a reason to escalate.",
-    "metadata": { "source": "ra-rapid-worsening", "condition": "RA", "acuity": "urgent", "pattern": "rapid_worsening" }
+    "metadata": {
+      "source": "ra-rapid-worsening",
+      "condition": "RA",
+      "acuity": "urgent",
+      "pattern": "rapid_worsening",
+      "followUpQuestion": "Has this gotten noticeably worse over just the last few hours, or is it the most severe flare you've had?"
+    }
   },
   {
+    "id": "ra-selfcare-measures",
     "text": "General self-management for a typical flare includes resting affected joints, gentle range-of-motion movement, heat for stiffness or cold for swelling, and taking anti-inflammatory or other medications exactly as your care plan specifies. Keep a symptom note so your team can see the pattern at your next visit.",
-    "metadata": { "source": "ra-selfcare-measures", "condition": "RA", "acuity": "self_manage", "pattern": "general_selfcare" }
+    "metadata": {
+      "source": "ra-selfcare-measures",
+      "condition": "RA",
+      "acuity": "self_manage",
+      "pattern": "general_selfcare",
+      "followUpQuestion": "Have you already tried rest, heat or cold, and your usual flare medications for this?"
+    }
   },
   {
+    "id": "ra-baseline-deviation",
     "text": "A useful rule of thumb: if today's symptoms are clearly outside your normal range - new joints involved, much higher pain, or symptoms you have not had before - contact your care team rather than waiting. If they are severe or rapidly worsening, seek urgent care.",
-    "metadata": { "source": "ra-baseline-deviation", "condition": "RA", "acuity": "contact_provider", "pattern": "outside_baseline" }
+    "metadata": {
+      "source": "ra-baseline-deviation",
+      "condition": "RA",
+      "acuity": "contact_provider",
+      "pattern": "outside_baseline",
+      "followUpQuestion": "Are any new joints involved, or is the pain clearly worse than what's normal for you?"
+    }
   },
   {
+    "id": "ra-neuro-eye",
     "text": "New numbness or weakness, new severe eye pain or vision changes, or a new severe headache should be evaluated promptly and are not typical parts of a routine arthritis flare. Treat these as urgent, and as an emergency if sudden and severe.",
-    "metadata": { "source": "ra-neuro-eye", "condition": "RA", "acuity": "urgent", "pattern": "neuro_or_eye" }
+    "metadata": {
+      "source": "ra-neuro-eye",
+      "condition": "RA",
+      "acuity": "urgent",
+      "pattern": "neuro_or_eye",
+      "followUpQuestion": "Have you noticed any new numbness, weakness, severe eye pain, vision changes, or a severe headache?"
+    }
   },
   {
+    "id": "ra-triage-framing",
     "text": "When it is unclear how serious symptoms are, the safe default is to contact your care team rather than assume it is a normal flare. This tool helps you decide a next step; it is not a diagnosis, and if you think you are having an emergency, call 911 or go to the nearest emergency department.",
-    "metadata": { "source": "ra-triage-framing", "condition": "RA", "acuity": "contact_provider", "pattern": "default_when_unsure" }
+    "metadata": {
+      "source": "ra-triage-framing",
+      "condition": "RA",
+      "acuity": "contact_provider",
+      "pattern": "default_when_unsure",
+      "followUpQuestion": "On a scale from 0 to 10, how severe would you say this is right now?"
+    }
   }
 ]

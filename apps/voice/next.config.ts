@@ -4,6 +4,7 @@ import path from 'node:path';
 
 const nextConfig: NextConfig = {
   transpilePackages: ['@bridgecare/shared'],
+  serverExternalPackages: ['@moss-dev/moss', '@moss-dev/moss-core'],
   outputFileTracingRoot: path.join(__dirname, '../..'),
   webpack: (config) => {
     config.resolve.extensionAlias = {
