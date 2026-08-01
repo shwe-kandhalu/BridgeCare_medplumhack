@@ -2,3 +2,5 @@ node_modules/
 .next/
 coverage/
 .DS_Store
+apps/voice/public/sw.js
+apps/voice/public/swe-worker-*.js
