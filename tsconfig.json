@@ -13,6 +13,6 @@
     "outDir": "dist",
     "resolveJsonModule": true
   },
-  "include": ["apps/**/*.ts", "packages/**/*.ts"],
+  "include": ["apps/analysis/**/*.ts", "packages/shared/*.ts"],
   "exclude": ["dist", "node_modules"]
 }
