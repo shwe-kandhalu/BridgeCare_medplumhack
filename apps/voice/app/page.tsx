@@ -1,10 +1,20 @@
 'use client';
 import { useRef, useState } from 'react';
-import { AnalyzeRequestSchema, AppointmentResultSchema, GroundingSchema, TriageOutcomeSchema, type AppointmentResult, type TriageOutcome } from '@bridgecare/shared';
+import { AnalyzeRequestSchema, AppointmentResultSchema, GroundingSchema, IntakeGuidanceSchema, TriageOutcomeSchema, type AppointmentResult, type IntakeGuidance, type TriageOutcome } from '@bridgecare/shared';
 import { createIntake, DISCLAIMER, extractStructuredSymptoms, processPatientTurn, type TurnResult } from '../lib/intake';
 
 const PATIENT_ID = 'synthetic-maya-001';
 const EMPTY_GROUNDING = GroundingSchema.parse({ citations: [], candidateMappings: [] });
+const EMPTY_GUIDANCE = IntakeGuidanceSchema.parse({ matches: [] });
+
+/** Missing or unreachable Moss retrieval ends intake conservatively (no further curated questions) rather than blocking the conversation. */
+async function retrieveIntakeGuidance(query: string): Promise<IntakeGuidance> {
+  try {
+    const response = await fetch('/api/intake-guidance', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ query }) });
+    if (!response.ok) return EMPTY_GUIDANCE;
+    return IntakeGuidanceSchema.parse(await response.json());
+  } catch (caught) { console.error('Intake guidance unavailable; ending intake conservatively:', caught); return EMPTY_GUIDANCE; }
+}
 
 export default function Home() {
   const [intake, setIntake] = useState(() => createIntake(PATIENT_ID));
@@ -54,7 +64,7 @@ export default function Home() {
     if (!message.trim() || busy || outcome) return;
     setBusy(true); setError(undefined);
     try {
-      const result = processPatientTurn(intake, message);
+      const result = await processPatientTurn(intake, message, retrieveIntakeGuidance);
       setIntake(result.state); setMessage('');
       if (result.decision.done) await analyze(result);
     } catch (caught) {

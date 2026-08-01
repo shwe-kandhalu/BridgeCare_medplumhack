@@ -6,7 +6,8 @@
       "source": "ra-flare-mild-selfcare",
       "condition": "RA",
       "acuity": "self_manage",
-      "pattern": "mild_flare_within_baseline"
+      "pattern": "mild_flare_within_baseline",
+      "followUpQuestion": "Is this flare similar in pain and stiffness to flares you've had before, or does it feel different this time?"
     }
   },
   {
@@ -16,7 +17,8 @@
       "source": "ra-contact-team-routine",
       "condition": "RA",
       "acuity": "contact_provider",
-      "pattern": "worsening_beyond_baseline"
+      "pattern": "worsening_beyond_baseline",
+      "followUpQuestion": "Has this flare lasted longer or felt worse than your usual flares, or is it not responding to your normal self-care?"
     }
   },
   {
@@ -26,7 +28,8 @@
       "source": "ra-morning-stiffness",
       "condition": "RA",
       "acuity": "self_manage",
-      "pattern": "morning_stiffness"
+      "pattern": "morning_stiffness",
+      "followUpQuestion": "About how many minutes does your morning stiffness usually last, and has that changed recently?"
     }
   },
   {
@@ -36,7 +39,8 @@
       "source": "ra-swollen-hot-joint",
       "condition": "RA",
       "acuity": "contact_provider",
-      "pattern": "single_joint_swelling_warmth"
+      "pattern": "single_joint_swelling_warmth",
+      "followUpQuestion": "Is one specific joint newly swollen, warm, or red compared to your other joints?"
     }
   },
   {
@@ -46,7 +50,8 @@
       "source": "ra-fever-immunosuppression",
       "condition": "RA",
       "acuity": "urgent",
-      "pattern": "fever_on_immunosuppression"
+      "pattern": "fever_on_immunosuppression",
+      "followUpQuestion": "Do you currently have a fever, and are you taking a biologic, methotrexate, or steroid medication?"
     }
   },
   {
@@ -56,7 +61,8 @@
       "source": "ra-redflag-emergency",
       "condition": "RA",
       "acuity": "emergency",
-      "pattern": "red_flag_systemic"
+      "pattern": "red_flag_systemic",
+      "followUpQuestion": "Are you having any chest pain, trouble breathing, sudden confusion, slurred speech, or a severe headache right now?"
     }
   },
   {
@@ -66,7 +72,8 @@
       "source": "ra-infection-signs",
       "condition": "RA",
       "acuity": "urgent",
-      "pattern": "possible_infection"
+      "pattern": "possible_infection",
+      "followUpQuestion": "Do you have any signs of infection, like chills, a spreading red area of skin, a cough with fever, or suddenly feeling very unwell?"
     }
   },
   {
@@ -76,7 +83,8 @@
       "source": "ra-medication-concern",
       "condition": "RA",
       "acuity": "contact_provider",
-      "pattern": "medication_issue"
+      "pattern": "medication_issue",
+      "followUpQuestion": "Have you missed a dose of your biologic or other RA medication, or noticed any new side effects?"
     }
   },
   {
@@ -86,7 +94,8 @@
       "source": "ra-fatigue-systemic",
       "condition": "RA",
       "acuity": "self_manage",
-      "pattern": "fatigue"
+      "pattern": "fatigue",
+      "followUpQuestion": "Is your fatigue at its usual level, or is it new, severe, or getting rapidly worse?"
     }
   },
   {
@@ -96,7 +105,8 @@
       "source": "ra-rapid-worsening",
       "condition": "RA",
       "acuity": "urgent",
-      "pattern": "rapid_worsening"
+      "pattern": "rapid_worsening",
+      "followUpQuestion": "Has this gotten noticeably worse over just the last few hours, or is it the most severe flare you've had?"
     }
   },
   {
@@ -106,7 +116,8 @@
       "source": "ra-selfcare-measures",
       "condition": "RA",
       "acuity": "self_manage",
-      "pattern": "general_selfcare"
+      "pattern": "general_selfcare",
+      "followUpQuestion": "Have you already tried rest, heat or cold, and your usual flare medications for this?"
     }
   },
   {
@@ -116,7 +127,8 @@
       "source": "ra-baseline-deviation",
       "condition": "RA",
       "acuity": "contact_provider",
-      "pattern": "outside_baseline"
+      "pattern": "outside_baseline",
+      "followUpQuestion": "Are any new joints involved, or is the pain clearly worse than what's normal for you?"
     }
   },
   {
@@ -126,7 +138,8 @@
       "source": "ra-neuro-eye",
       "condition": "RA",
       "acuity": "urgent",
-      "pattern": "neuro_or_eye"
+      "pattern": "neuro_or_eye",
+      "followUpQuestion": "Have you noticed any new numbness, weakness, severe eye pain, vision changes, or a severe headache?"
     }
   },
   {
@@ -136,7 +149,8 @@
       "source": "ra-triage-framing",
       "condition": "RA",
       "acuity": "contact_provider",
-      "pattern": "default_when_unsure"
+      "pattern": "default_when_unsure",
+      "followUpQuestion": "On a scale from 0 to 10, how severe would you say this is right now?"
     }
   }
 ]
